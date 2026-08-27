@@ -11,3 +11,7 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
 });
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
+
+export function getAuthRedirectUrl(origin: string, basePath = import.meta.env.BASE_URL || "/") {
+  return new URL(basePath, origin).toString();
+}

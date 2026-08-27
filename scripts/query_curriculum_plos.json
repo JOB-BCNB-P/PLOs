@@ -1,0 +1,1 @@
+{"project_id":"ootfwcssrgzpliadjlau","query":"select id, code, description from public.plos where curriculum_id = 'd3b660e3-8554-484e-8905-c2aa41af7501' order by code limit 20"}

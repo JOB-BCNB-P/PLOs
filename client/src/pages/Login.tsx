@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { getAuthRedirectUrl, supabase } from "@/lib/supabase";
 
 export default function Login({ onDemoEnter }: { onDemoEnter: () => void }) {
   const [mode, setMode] = useState("staff");
@@ -13,7 +13,8 @@ export default function Login({ onDemoEnter }: { onDemoEnter: () => void }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const handleStaffSignIn = async () => {
     setIsSigningIn(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+    const redirectUrl = getAuthRedirectUrl(window.location.origin);
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectUrl, queryParams: { access_type: "offline", prompt: "select_account" } } });
     setIsSigningIn(false);
     if (error) toast.error("ยังไม่สามารถเชื่อมต่อ Google Workspace ได้", { description: error.message });
   };

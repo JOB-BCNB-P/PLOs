@@ -1,0 +1,1 @@
+{"project_id":"ootfwcssrgzpliadjlau","query":"select count(*) as sub_plo_count from public.sub_plos where plo_id in (select id from public.plos where curriculum_id = 'd3b660e3-8554-484e-8905-c2aa41af7501') limit 1"}

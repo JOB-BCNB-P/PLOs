@@ -180,3 +180,28 @@ git push origin main
 [2] [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)  
 [3] [Supabase Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control)  
 [4] [Vite: Deploying a Static Site](https://vite.dev/guide/static-deploy)
+
+## 12. การใช้งานฟอร์มคะแนน หลักฐาน และรายงาน
+
+ผู้มีสิทธิ์แก้ไขเปิดหน้ารายบุคคลแล้วกด **บันทึกคะแนน** ระบบจะโหลดรายชื่อนักศึกษาและ assessment methods ตามขอบเขต RLS จาก Supabase ผู้ใช้ต้องเลือกนักศึกษา จุดวัดผล คะแนนดิบ ระดับสมรรถนะ ภาคเรียน และครั้งที่ประเมิน จากนั้นแนบหลักฐานได้เป็น PDF, JPG, PNG, DOCX หรือ XLSX ไม่เกิน 20 MB ซึ่งสอดคล้องกับ private bucket และ Storage policy ของโครงการ [3]
+
+ก่อนเรียก `record_score` ระบบตรวจว่า student/method ถูกเลือก, คะแนนดิบไม่ติดลบ, competency อยู่ในช่วง 0–5, ภาคเรียนอยู่ในรูปแบบ `พ.ศ./ภาค` และ attempt เป็นจำนวนเต็มตั้งแต่ 1 หาก validation ไม่ผ่าน ระบบจะแสดงข้อผิดพลาดโดยไม่ส่งคำขอไปยังฐานข้อมูล หากอัปโหลดไฟล์สำเร็จแต่สร้าง metadata ไม่สำเร็จ ระบบจะลบไฟล์ค้างจาก bucket เพื่อไม่ให้เกิด orphan evidence
+
+บน Dashboard และ StudentView มีปุ่ม **PDF** และ **Excel** รายงาน Excel เก็บแถวผล PLO พร้อม student code, ชั้นปี, ค่า computed value, status, term และเหตุผล ส่วน PDF เป็นรายงานสรุปสำหรับพิมพ์หรือส่งต่อ โดยข้อมูลที่แสดงใน preview ซึ่งมีป้าย `DEMO VIEW` เป็นข้อมูลสาธิตและต้องเปลี่ยนเป็นข้อมูลจริงภายใต้ session ที่ผ่าน RLS ก่อนใช้งานในหน่วยงาน
+
+กราฟ **ผลสัมฤทธิ์ PLO แยกตามชั้นปี** จะพยายามอ่าน `students` และ `plo_achievement` ของภาคเรียนปัจจุบันจาก Supabase ถ้าผู้ใช้ไม่มีข้อมูลตาม RLS หรือยังไม่มีข้อมูลผลประเมิน ระบบจะแสดง fallback สำหรับ preview พร้อมป้ายกำกับชัดเจน ไม่ควรนำ fallback ไปอ้างเป็นสถิติทางการ
+
+[3] [Supabase Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control)
+
+
+## 10. ใช้งานค้นหานักศึกษาและประวัติหลักฐาน
+
+บน Dashboard ผู้ใช้ที่ผ่าน session สามารถพิมพ์รหัสนักศึกษาหรือชื่อในช่อง **ค้นหานักศึกษา** ระบบจะค้นจาก `students.student_code` และ `students.full_name_th` ด้วย `ilike` จำกัดผลลัพธ์ 20 รายการ และตัด wildcard ที่อาจทำให้ filter ทำงานผิดปกติ เลือกผลลัพธ์เพื่อเปิด Student View ของระเบียนนั้นได้ทันที โหมด `?demo=1` ใช้ดูตัวอย่างเท่านั้นและไม่ค้นข้อมูลจริง
+
+ใน Student View ส่วน **ประวัติไฟล์หลักฐาน** จะโหลด metadata จาก `evidence` ที่เชื่อมกับคะแนนของนักศึกษา การเปิดและดาวน์โหลดใช้ signed URL จาก private bucket อายุ 120 วินาที การลบจะตรวจ storage policy และ RLS ของเจ้าของไฟล์หรือผู้ใช้ที่มีสิทธิ์กำกับดูแล หาก storage ลบสำเร็จแต่ metadata ล้มเหลว ให้ตรวจรายการและ audit/log ก่อนดำเนินการซ้ำ
+
+แบบฟอร์มคะแนนแสดง loading animation ระหว่างโหลดข้อมูลอ้างอิง และ toast สำหรับเริ่มตรวจสอบ, บันทึกสำเร็จ, duplicate attempt, permission denied และ error การกดบันทึกซ้ำถูกป้องกันขณะ request เดิมทำงาน
+
+## 11. ขอบเขตข้อมูลจริงจากเอกสารแนบ
+
+ไฟล์ `docs/source_analysis/curriculum_mapping_import.csv` เป็น staged import artifact จาก Curriculum Mapping จริง จำนวน 198 records จาก 49 รายวิชา ครอบคลุม PLO1–PLO10 และ I/R/M รายละเอียดอยู่ใน `docs/08_source_data_analysis_report.md` ปัจจุบันยังไม่ import เข้า Supabase เนื่องจากฐานข้อมูลยังไม่มี sub-PLO ของหลักสูตร 2565 และไฟล์แนบยังไม่มี roster นักศึกษา/คะแนนจริง การเติมข้อมูลต้องยืนยัน sub-PLO descriptions, semester และ course_type ก่อนเสมอ
