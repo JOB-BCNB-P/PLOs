@@ -1,0 +1,40 @@
+direction: right
+
+curricula: "curricula\nversion · status · effective_year" {
+  shape: cylinder
+}
+plos: "plos\ncode · description" { shape: cylinder }
+sub_plos: "sub_plos\ncode · description" { shape: cylinder }
+courses: "courses\ncourse_code · name_th" { shape: cylinder }
+clos: "clos\ncode · description" { shape: cylinder }
+assessment_methods: "assessment_methods\nweight · pass_threshold" { shape: cylinder }
+students: "students\nstudent_code · admit_year\ncurrent_year_level" { shape: cylinder }
+scores: "scores\nraw_score · competency_level\nterm · attempt_no" { shape: cylinder }
+sub_achievement: "sub_plo_achievement\nstatus · computed_value" { shape: cylinder }
+plo_achievement: "plo_achievement\nstatus · computed_value\nreason_text" { shape: cylinder }
+curriculum_map: "curriculum_map\nlevel: I/R/M/P" { shape: cylinder }
+evidence: "evidence\nfile_url · ref_type" { shape: cylinder }
+settings: "settings\nrule parameters" { shape: cylinder }
+profiles: "profiles / user_roles\nrole · can_edit" { shape: cylinder }
+audit_log: "audit_log\naction · old_data · new_data" { shape: cylinder }
+
+curricula -> plos: contains
+plos -> sub_plos: contains
+curricula -> courses: contains
+courses -> clos: contains
+clos -> assessment_methods: measures
+courses -> curriculum_map: maps
+plos -> curriculum_map: maps
+curricula -> students: enrols
+students -> scores: receives
+assessment_methods -> scores: produces
+students -> sub_achievement: evaluated
+sub_plos -> sub_achievement: result
+students -> plo_achievement: evaluated
+plos -> plo_achievement: result
+scores -> plo_achievement: traceable source
+plo_achievement -> evidence: evidence trail
+settings -> plo_achievement: rule snapshot
+profiles -> audit_log: acts
+profiles -> scores: recorded by
+
