@@ -16,7 +16,17 @@ export default function Login({ onDemoEnter }: { onDemoEnter: () => void }) {
     const redirectUrl = getAuthRedirectUrl(window.location.origin);
     const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectUrl, queryParams: { access_type: "offline", prompt: "select_account" } } });
     setIsSigningIn(false);
-    if (error) toast.error("ยังไม่สามารถเชื่อมต่อ Google Workspace ได้", { description: error.message });
+    if (error) {
+      const providerDisabled = error.message.toLowerCase().includes("provider is not enabled");
+      toast.error(
+        providerDisabled ? "ยังไม่ได้เปิด Google Provider ใน Supabase" : "ยังไม่สามารถเชื่อมต่อ Google Workspace ได้",
+        {
+          description: providerDisabled
+            ? "ไปที่ Supabase → Authentication → Providers → Google แล้วเปิดใช้งาน พร้อมตรวจ Client ID, Secret และ Redirect URL"
+            : error.message,
+        },
+      );
+    }
   };
   const handleStudentCheck = () => {
     if (!/^\d{13}$/.test(nationalId)) return toast.error("กรุณากรอกเลขบัตรประชาชนให้ครบ 13 หลัก");
