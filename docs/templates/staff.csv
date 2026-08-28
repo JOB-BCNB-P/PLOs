@@ -1,3 +1,10 @@
-email,display_name,role,can_edit,is_active
-lecturer@bcn.ac.th,ชื่อผู้สอน,lecturer,false,true
-admin@bcn.ac.th,ชื่อผู้ดูแล,admin,true,true
+﻿# ฟอร์มผู้สอน/บุคลากร และสิทธิ์การใช้งาน
+# email        = บัญชี @bcn.ac.th เท่านั้น และต้องเคยเข้าสู่ระบบด้วย Google แล้ว
+# display_name = คำนำหน้า ชื่อ นามสกุล
+# position_th  = ตำแหน่ง เช่น อาจารย์ / ผู้ช่วยศาสตราจารย์ / นักวิชาการศึกษา
+# department   = ภาควิชา/กลุ่มงาน
+# role         = admin | executive | academic_affairs | program_chair | class_advisor | lecturer | student
+# can_edit     = true เมื่อได้รับอนุมัติให้แก้ไขข้อมูล (ค่าเริ่มต้นควรเป็น false)
+# is_active    = true = ปฏิบัติงานอยู่
+email,display_name,position_th,department,role,can_edit,is_active
+# somchai.k@bcn.ac.th,นางสาวตัวอย่าง ทดสอบ,อาจารย์,ภาควิชาการพยาบาลผู้ใหญ่และผู้สูงอายุ,lecturer,false,true

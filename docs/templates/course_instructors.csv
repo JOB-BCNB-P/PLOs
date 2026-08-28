@@ -1,0 +1,8 @@
+﻿# ฟอร์มผู้สอนประจำรายวิชา
+# course_code      = รหัสวิชา เช่น 0101300209 หรือ GE 101
+# instructor_email = อีเมล @bcn.ac.th ของผู้สอน
+# instructor_role  = course_owner (อาจารย์ผู้รับผิดชอบรายวิชา) | co_instructor (ผู้สอนร่วม) | clinical_preceptor (อาจารย์นิเทศ/พี่เลี้ยงแหล่งฝึก)
+# academic_year    = ปีการศึกษา (พ.ศ.) เช่น 2568
+# term             = ภาคการศึกษา รูปแบบ 2568/1 (เว้นว่างได้)
+course_code,instructor_email,instructor_role,academic_year,term
+# 0101300209,somchai.k@bcn.ac.th,course_owner,2568,2568/1

@@ -1,4 +1,4 @@
+﻿# ฟอร์มปรับสิทธิ์ผู้ใช้
+# role = admin | executive | academic_affairs | program_chair | class_advisor | lecturer | student
 email,role,can_edit,is_active
-admin@bcn.ac.th,admin,true,true
-lecturer@bcn.ac.th,lecturer,true,true
-academic.affairs@bcn.ac.th,academic_affairs,true,true
+# somchai.k@bcn.ac.th,lecturer,false,true

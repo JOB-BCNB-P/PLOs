@@ -1,0 +1,7 @@
+﻿# ฟอร์มอาจารย์ที่ปรึกษาประจำตัวนักศึกษา
+# advisor_email = อีเมล @bcn.ac.th ของอาจารย์ที่ปรึกษา
+# student_code  = รหัสนักศึกษา (ต้องนำเข้ารายชื่อนักศึกษาก่อน)
+# academic_year = ปีการศึกษา (พ.ศ.)
+# advisor_kind  = class_advisor (ที่ปรึกษาหลัก) | co_advisor (ที่ปรึกษาร่วม) เว้นว่าง = class_advisor
+advisor_email,student_code,academic_year,advisor_kind
+# somchai.k@bcn.ac.th,68010001,2568,class_advisor
