@@ -60,13 +60,17 @@ pnpm dev
 
 ### 4.1 ใช้ migrations ที่จัดเตรียมไว้
 
-โครงการมี migration 3 ชุดใน `supabase/migrations/` โดยต้องเรียงตามชื่อไฟล์ ห้ามสลับลำดับ เพราะชุดแรกสร้าง enum, ตาราง, RLS, trigger, ฟังก์ชันคำนวณ และข้อมูลหลักสูตรตัวอย่าง; ชุดที่สองสร้าง private evidence bucket; ชุดที่สามกำหนด search path ที่ปลอดภัยให้ trigger function
+โครงการมี migration 7 ชุดใน `supabase/migrations/` โดยต้องเรียงตามชื่อไฟล์ ห้ามสลับลำดับ เพราะชุดแรกสร้าง enum, ตาราง, RLS, trigger, ฟังก์ชันคำนวณ และข้อมูลหลักสูตรตัวอย่าง; ชุดที่สองสร้าง private evidence bucket; ชุดที่สามกำหนด search path ที่ปลอดภัยให้ trigger function; ชุดที่สี่เพิ่ม atomic RPC สำหรับบันทึกคะแนนพร้อม metadata หลักฐาน; และชุดที่ห้าถอน EXECUTE ของฟังก์ชัน SECURITY DEFINER จาก anonymous role
 
 | Migration | เนื้อหา |
 |---|---|
 | `202608270001_initial_plo_schema.sql` | โครงสร้าง PLO/CLO/รายวิชา, คะแนน, verdict, role, audit, RLS และกฎคำนวณ |
 | `202608270002_evidence_storage.sql` | bucket `plo-evidence` แบบ private และ Storage RLS policy |
 | `202608270003_harden_trigger_function.sql` | hardening ของ `set_updated_at()` |
+| `202608270004_atomic_score_evidence.sql` | RPC transaction เดียวสำหรับ score + evidence metadata |
+| `202608270005_revoke_anon_definer_execute.sql` | ถอนสิทธิ์ anonymous จาก helper functions |
+| `202608270006_curriculum_mapping_staging.sql` | ตาราง staging สำหรับ mapping ที่รอตรวจสอบ |
+| `202608270007_seed_curriculum_mapping_staging.sql` | candidate mapping จากไฟล์แนบ 196 แถวแบบ pending review |
 
 วิธีที่แนะนำคือเชื่อม Supabase CLI กับ project แล้วสั่ง `db push` จาก root ของ repository
 
@@ -205,3 +209,12 @@ git push origin main
 ## 11. ขอบเขตข้อมูลจริงจากเอกสารแนบ
 
 ไฟล์ `docs/source_analysis/curriculum_mapping_import.csv` เป็น staged import artifact จาก Curriculum Mapping จริง จำนวน 198 records จาก 49 รายวิชา ครอบคลุม PLO1–PLO10 และ I/R/M รายละเอียดอยู่ใน `docs/08_source_data_analysis_report.md` ปัจจุบันยังไม่ import เข้า Supabase เนื่องจากฐานข้อมูลยังไม่มี sub-PLO ของหลักสูตร 2565 และไฟล์แนบยังไม่มี roster นักศึกษา/คะแนนจริง การเติมข้อมูลต้องยืนยัน sub-PLO descriptions, semester และ course_type ก่อนเสมอ
+
+
+## 7.1 นำเข้าข้อมูลด้วย CSV ผ่านหน้า Admin
+
+หลังจากผู้ดูแลระบบคนแรกได้รับ role `admin` แล้ว ให้เข้าสู่ระบบที่ production URL และเปิดเมนู **ผู้ดูแลระบบ** จากรางนำทางด้านซ้าย จะพบแผง **Controlled Import** ซึ่งรองรับ 4 ประเภท ได้แก่ `Curriculum Mapping (staging)`, นักศึกษา, ผู้สอน/ผู้ดูแล และสิทธิ์ผู้ใช้ ผู้ดูแลสามารถกดดาวน์โหลด template, เลือกไฟล์ CSV, ตรวจ preview และอ่านรายการ error ก่อนกด **ยืนยันและนำเข้า**
+
+ระบบรับไฟล์ไม่เกิน 5 MB และบังคับ UTF-8 CSV โดยตรวจคอลัมน์ที่จำเป็น, duplicate key, email `@bcn.ac.th`, role ที่อนุญาต, ปี พ.ศ., ชั้นปี และ SHA-256 64 ตัวอักษรของ `national_id_hash` ก่อนบันทึก ผู้สอน/ผู้ดูแลต้องเข้าสู่ระบบ Google อย่างน้อยหนึ่งครั้งก่อนจึงจะมี profile ให้ผูก role ได้ CSV จึงไม่สามารถสร้าง password หรือบัญชี Google ใหม่ได้
+
+Curriculum Mapping จากเอกสารแนบถูก seed เข้า `curriculum_mapping_staging` แล้ว 196 แถวในสถานะ `pending_review` จาก candidate 198 แถว โดย 2 แถวที่ซ้ำตาม unique key ถูกข้ามด้วย `on conflict do nothing` ข้อมูล staging ยังไม่ถูกนำไปใช้คำนวณผลหรือเขียนลง `curriculum_map` จนกว่าผู้รับผิดชอบจะยืนยัน sub-PLO, semester และ course_type

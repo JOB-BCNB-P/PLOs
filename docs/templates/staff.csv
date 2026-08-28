@@ -1,0 +1,3 @@
+email,display_name,role,can_edit,is_active
+lecturer@bcn.ac.th,ชื่อผู้สอน,lecturer,false,true
+admin@bcn.ac.th,ชื่อผู้ดูแล,admin,true,true

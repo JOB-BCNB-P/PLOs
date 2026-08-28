@@ -47,7 +47,8 @@ pnpm dev
 ## คำสั่งคุณภาพ
 
 ```bash
-pnpm check  # ตรวจสอบ TypeScript และรัน 12 Unit Tests
+pnpm check  # ตรวจสอบ TypeScript
+pnpm test    # รัน 20 Unit Tests
 pnpm build  # สร้างไฟล์ static สำหรับ GitHub Pages
 ```
 
@@ -60,6 +61,6 @@ Dashboard รองรับการค้นหานักศึกษาต�
 
 Student View รองรับการดู metadata หลักฐาน เปิดไฟล์ผ่าน signed URL อายุสั้น ดาวน์โหลด และลบไฟล์ตาม storage policy และ RLS ของผู้ใช้ การบันทึกคะแนนตรวจ session, สิทธิ์, duplicate attempt และบันทึก metadata ด้วย RPC ที่ใช้ transaction เดียวเมื่อมีไฟล์
 
-ไฟล์ `docs/source_analysis/curriculum_mapping_import.csv` เป็นข้อมูล mapping ที่แปลงจากเอกสารจริง จำนวน 198 records จาก 49 รายวิชา ครอบคลุม PLO1–PLO10 และระดับ I/R/M แต่ยังไม่ถูก import เข้า Supabase จนกว่าจะยืนยัน sub-PLO descriptions, semester และ course_type จากเอกสารหลักสูตรอย่างเป็นทางการ รายละเอียดอยู่ใน `docs/08_source_data_analysis_report.md`
+ไฟล์ `docs/source_analysis/curriculum_mapping_import.csv` เป็นข้อมูล mapping candidate จากเอกสารจริง จำนวน 198 records จาก 49 รายวิชา ครอบคลุม PLO1–PLO10 และระดับ I/R/M โดยมี 196 แถว unique ถูก seed เข้า `curriculum_mapping_staging` ในสถานะ `pending_review`; ยังไม่ถูกเลื่อนเข้า `curriculum_map` final จนกว่าจะยืนยัน sub-PLO descriptions, semester และ course_type จากเอกสารหลักสูตรอย่างเป็นทางการ รายละเอียดอยู่ใน `docs/08_source_data_analysis_report.md`
 
 โหมด `?demo=1` ใช้สำหรับดูรูปแบบหน้าจอเท่านั้น การค้นหา, บันทึกคะแนน และประวัติหลักฐานแบบ production ต้องใช้งานผ่าน session ที่ผ่าน Supabase Authentication และ policy ที่เหมาะสม
