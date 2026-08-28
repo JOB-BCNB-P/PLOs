@@ -13,8 +13,8 @@
 | Production site URL | `https://job-bcnb-p.github.io/PLOs/` |
 | Production origin สำหรับ Google | `https://job-bcnb-p.github.io` |
 | Supabase Auth callback สำหรับ Google | `https://ootfwcssrgzpliadjlau.supabase.co/auth/v1/callback` |
-| Local app URL | `http://localhost:5173/` หรือ URL ที่ Vite แสดงจริง |
-| Local origin สำหรับ Google | `http://localhost:5173` |
+| Local app URL | `http://localhost:3000/` หรือ URL ที่ development server แสดงจริง |
+| Local origin สำหรับ Google | `http://localhost:3000` |
 
 ## 2. ตั้งค่า Google Auth Platform
 
@@ -24,7 +24,7 @@
 
 | ช่อง Google | ค่า |
 |---|---|
-| Authorized JavaScript origins | `https://job-bcnb-p.github.io` และ `http://localhost:5173` ระหว่างพัฒนา |
+| Authorized JavaScript origins | `https://job-bcnb-p.github.io` และ `http://localhost:3000` ระหว่างพัฒนา |
 | Authorized redirect URIs | `https://ootfwcssrgzpliadjlau.supabase.co/auth/v1/callback` |
 
 เก็บ Client ID และ Client Secret ใน password manager ของหน่วยงาน ห้าม commit ลง GitHub. หาก Google Workspace จำกัดเฉพาะผู้ใช้ในองค์กร ให้ตั้ง Publishing status และ User type ให้ตรงกับนโยบาย Workspace; หากแอปอยู่ใน Testing ให้เพิ่มบัญชีผู้ทดสอบใน Test users.
@@ -39,7 +39,7 @@
 
 ```text
 https://job-bcnb-p.github.io/PLOs/
-http://localhost:5173/
+http://localhost:3000/
 ```
 
 อย่าเพิ่ม wildcard กว้างเกินไปใน production. Supabase จะยอมรับ `redirectTo` จาก client เฉพาะ URL ที่อยู่ใน allow-list และ Site URL เป็น fallback เมื่อไม่ได้ระบุ `redirectTo` [2]
@@ -69,7 +69,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_วางค่าจริงจ�
 
 ## 8. Troubleshooting
 
-หากพบ `Unsupported provider: provider is not enabled` หรือ `validation_failed` ให้ตรวจที่ **Supabase Dashboard → Authentication → Providers → Google** ว่าสวิตช์ Google เปิดอยู่จริง มี Web Client ID/Client Secret ครบ และกด Save แล้ว จากนั้นตรวจว่า Google OAuth consent screen/Google Auth Platform ของ project เดียวกันยังเปิดใช้งานอยู่. หากพบ `redirect_uri_mismatch` ให้ตรวจว่า Google Client ใช้ callback ของ Supabase ไม่ใช่ GitHub Pages URL. หากพบ `not a valid redirect URL` ให้ตรวจ URL Configuration ของ Supabase และ trailing slash ให้ตรงกับ `redirectTo`. หาก login สำเร็จแต่ยังเห็นหน้า Login ให้ตรวจ Site URL, callback path `/PLOs/`, browser storage และ `onAuthStateChange`.
+หาก browser แสดง `ERR_CONNECTION_REFUSED` ที่ `localhost` หลังเลือกบัญชี Google ให้รัน `pnpm dev` ในโครงการก่อน และเปิด URL ที่ development server แสดง (โดยปกติ `http://localhost:3000/`); ถ้าใช้ OAuth บนเครื่อง local ให้เพิ่ม `http://localhost:3000/` ใน Supabase Authentication → URL Configuration ด้วย. หากพบ `Unsupported provider: provider is not enabled` หรือ `validation_failed` ให้ตรวจที่ **Supabase Dashboard → Authentication → Providers → Google** ว่าสวิตช์ Google เปิดอยู่จริง มี Web Client ID/Client Secret ครบ และกด Save แล้ว จากนั้นตรวจว่า Google OAuth consent screen/Google Auth Platform ของ project เดียวกันยังเปิดใช้งานอยู่. หากพบ `redirect_uri_mismatch` ให้ตรวจว่า Google Client ใช้ callback ของ Supabase ไม่ใช่ GitHub Pages URL. หากพบ `not a valid redirect URL` ให้ตรวจ URL Configuration ของ Supabase และ trailing slash ให้ตรงกับ `redirectTo`. หาก login สำเร็จแต่ยังเห็นหน้า Login ให้ตรวจ Site URL, callback path `/PLOs/`, browser storage และ `onAuthStateChange`.
 
 หากฟอร์มขึ้นว่าโหลดรายการไม่ได้ ให้ตรวจ session, Data API exposure, table grants และ RLS policies. หากขึ้นว่าไม่มีสิทธิ์บันทึก ให้ตรวจ role/assignment ของ `auth.uid()` ไม่ควรแก้ด้วยการเปิด table ให้ `anon`.
 
