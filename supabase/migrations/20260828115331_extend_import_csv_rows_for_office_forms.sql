@@ -138,14 +138,26 @@ begin
       end if;
 
       insert into public.students
-        (student_code, full_name_th, national_id_hash, admit_year, current_year_level, curriculum_id, section, is_active)
+        (student_code, full_name_th, national_id_hash, admit_year, current_year_level, curriculum_id, section, email, is_active)
       values
-        (v_item->>'student_code', v_item->>'full_name_th', v_hash, (v_item->>'admit_year')::integer, (v_item->>'current_year_level')::smallint, v_curriculum_id, nullif(v_item->>'section',''), coalesce((v_item->>'is_active')::boolean, true))
+        (v_item->>'student_code', v_item->>'full_name_th', v_hash, (v_item->>'admit_year')::integer, (v_item->>'current_year_level')::smallint, v_curriculum_id, nullif(v_item->>'section',''), lower(nullif(trim(v_item->>'email'),'')), coalesce((v_item->>'is_active')::boolean, true))
       on conflict (student_code) do update set
         full_name_th = excluded.full_name_th, national_id_hash = excluded.national_id_hash,
         admit_year = excluded.admit_year, current_year_level = excluded.current_year_level,
         curriculum_id = excluded.curriculum_id, section = coalesce(excluded.section, public.students.section),
+        email = coalesce(excluded.email, public.students.email),
         is_active = excluded.is_active, updated_at = now();
+
+      -- ถ้านักศึกษามีบัญชีที่ล็อกอินไว้แล้ว ผูก student_access ให้ทันที
+      if nullif(trim(v_item->>'email'),'') is not null then
+        select p.id into v_profile_id from public.profiles p where lower(p.email) = lower(trim(v_item->>'email')) limit 1;
+        if v_profile_id is not null then
+          select s.id into v_student_id from public.students s where s.student_code = v_item->>'student_code' limit 1;
+          insert into public.student_access (student_id, user_id, verified_at, verified_by)
+          values (v_student_id, v_profile_id, now(), auth.uid())
+          on conflict (student_id) do update set user_id = excluded.user_id, verified_at = now(), verified_by = auth.uid();
+        end if;
+      end if;
 
     elsif p_kind = 'student_access' then
       v_email := lower(trim(v_item->>'email'));
@@ -200,11 +212,22 @@ begin
         raise exception 'ผู้ใช้ต้องเป็นบัญชีอีเมล @bcn.ac.th';
       end if;
       select p.id into v_profile_id from public.profiles p where lower(p.email) = v_email limit 1;
-      if v_profile_id is null then
-        raise exception 'ยังไม่พบบัญชี Google ใน Supabase Auth สำหรับ % — ให้ผู้ใช้เข้าสู่ระบบด้วย Google อย่างน้อยหนึ่งครั้งก่อน', v_email;
-      end if;
       if v_item->>'role' not in ('admin','executive','academic_affairs','program_chair','class_advisor','lecturer','student') then
         raise exception 'role ไม่อยู่ในรายการที่ระบบรองรับ';
+      end if;
+      if v_profile_id is null then
+        -- ยังไม่เคยเข้าสู่ระบบ: เก็บเป็นรายชื่อล่วงหน้า ระบบจะให้สิทธิ์อัตโนมัติเมื่อล็อกอินครั้งแรก
+        insert into public.pending_staff (email, display_name, position_th, department, role, can_edit, invited_by)
+        values (v_email, nullif(trim(v_item->>'display_name'),''), nullif(trim(v_item->>'position_th'),''), nullif(trim(v_item->>'department'),''),
+                (v_item->>'role')::public.app_role, coalesce((v_item->>'can_edit')::boolean, false), auth.uid())
+        on conflict (email) do update set
+          display_name = coalesce(excluded.display_name, public.pending_staff.display_name),
+          position_th  = coalesce(excluded.position_th, public.pending_staff.position_th),
+          department   = coalesce(excluded.department, public.pending_staff.department),
+          role = excluded.role, can_edit = excluded.can_edit,
+          invited_by = auth.uid(), invited_at = now(), applied_at = null, applied_user_id = null;
+        v_count := v_count + 1;
+        continue;
       end if;
       v_role := (v_item->>'role')::public.app_role;
       update public.profiles
