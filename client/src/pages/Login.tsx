@@ -1,19 +1,53 @@
-/** Clinical Aurora: ทางเข้าเดียวสำหรับทุกบทบาท — ล็อกอินด้วยอีเมลของสถาบันผ่าน Google แล้วระบบให้สิทธิ์ตามรายชื่อที่ลงทะเบียนไว้ */
+/**
+ * Clinical Aurora: หน้าเข้าสู่ระบบมีปุ่มเลือกบทบาทเพื่อบอกขั้นตอนให้ตรงกลุ่มผู้ใช้
+ * แต่ทั้งสองกลุ่มเข้าสู่ระบบด้วยอีเมลผ่าน Google เหมือนกัน และสิทธิ์จริงมาจากรายชื่อที่ลงทะเบียนไว้
+ * ไม่ใช่จากปุ่มที่ผู้ใช้เลือก — ปุ่มนี้เป็นเพียงคำแนะนำการใช้งาน
+ */
 import { useState } from "react";
-import { ArrowRight, Building2, CheckCircle2, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, GraduationCap, ShieldCheck, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { getAuthRedirectUrl, supabase } from "@/lib/supabase";
 
+type AccessMode = "staff" | "student";
+
+const MODE_COPY: Record<AccessMode, { note: React.ReactNode; button: string; steps: string[] }> = {
+  staff: {
+    note: <>ใช้บัญชีอีเมลของสถาบัน <strong>@bcn.ac.th</strong><br />ระบบให้บทบาทตามที่งานบุคลากรลงทะเบียนไว้</>,
+    button: "เข้าสู่ระบบด้วยอีเมล @bcn.ac.th",
+    steps: [
+      "อาจารย์ ที่ปรึกษา ประธานหลักสูตร งานวิชาการ และผู้บริหาร ใช้ทางเข้านี้",
+      "หากเข้าได้แต่ยังไม่เห็นเมนูที่ควรมี ให้แจ้งผู้ดูแลระบบตรวจบทบาทในรายชื่อบุคลากร",
+    ],
+  },
+  student: {
+    note: <>ใช้อีเมลที่แจ้งไว้กับ<strong>งานทะเบียน</strong><br />ระบบจะแสดงเฉพาะผลการเรียนรู้ของตนเองเท่านั้น</>,
+    button: "เข้าสู่ระบบด้วยอีเมลนักศึกษา",
+    steps: [
+      "ต้องเป็นอีเมลเดียวกับที่ลงทะเบียนไว้ในระบบ จึงจะผูกกับระเบียนนักศึกษาได้",
+      "หากเข้าได้แต่ระบบแจ้งว่ายังไม่ผูกระเบียน ให้ติดต่องานทะเบียนเพื่อตรวจอีเมล",
+    ],
+  },
+};
+
 export default function Login({ onDemoEnter }: { onDemoEnter: () => void }) {
+  const [mode, setMode] = useState<AccessMode>("staff");
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const copy = MODE_COPY[mode];
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
     const redirectUrl = getAuthRedirectUrl(window.location.origin);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: redirectUrl, queryParams: { access_type: "offline", prompt: "select_account" } },
+      options: {
+        redirectTo: redirectUrl,
+        // hd เป็นเพียงตัวช่วยกรองบัญชีในหน้าเลือกของ Google ไม่ใช่การบังคับสิทธิ์
+        queryParams: mode === "staff"
+          ? { access_type: "offline", prompt: "select_account", hd: "bcn.ac.th" }
+          : { access_type: "offline", prompt: "select_account" },
+      },
     });
     setIsSigningIn(false);
     if (!error) return;
@@ -35,18 +69,24 @@ export default function Login({ onDemoEnter }: { onDemoEnter: () => void }) {
     <section className="login-panel">
       <div className="login-card">
         <div className="institution-mark"><span><Building2 size={18} /></span><div><strong>วิทยาลัยพยาบาลบรมราชชนนี กรุงเทพ</strong><small>คณะพยาบาลศาสตร์ · สถาบันพระบรมราชชนก</small></div></div>
-        <div className="login-heading"><p className="eyebrow">SECURE ACCESS</p><h2>เข้าสู่ระบบ</h2><p>ใช้อีเมลของสถาบันได้ทั้งอาจารย์ บุคลากร และนักศึกษา</p></div>
+        <div className="login-heading"><p className="eyebrow">SECURE ACCESS</p><h2>เข้าสู่ระบบ</h2><p>เลือกประเภทผู้ใช้ แล้วเข้าสู่ระบบด้วยอีเมลของคุณ</p></div>
+
+        <Tabs value={mode} onValueChange={(value) => setMode(value as AccessMode)}>
+          <TabsList className="access-tabs">
+            <TabsTrigger value="staff"><UserRound size={15} />บุคลากร/อาจารย์</TabsTrigger>
+            <TabsTrigger value="student"><GraduationCap size={15} />นักศึกษา</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <div className="access-body">
-          <div className="access-note"><ShieldCheck size={18} /><span>ระบบให้สิทธิ์ตามรายชื่อที่ลงทะเบียนไว้<br />ไม่ได้ให้สิทธิ์เพียงเพราะเข้าสู่ระบบสำเร็จ</span></div>
+          <div className="access-note"><ShieldCheck size={18} /><span>{copy.note}</span></div>
           <Button className="google-button" onClick={handleSignIn} disabled={isSigningIn}>
-            <span className="google-g">G</span>{isSigningIn ? "กำลังเชื่อมต่อ…" : "เข้าสู่ระบบด้วยอีเมล (Google)"}<ArrowRight size={17} />
+            <span className="google-g">G</span>{isSigningIn ? "กำลังเชื่อมต่อ…" : copy.button}<ArrowRight size={17} />
           </Button>
           <div className="access-roles">
-            <p><UserRound size={14} /><strong>อาจารย์และบุคลากร</strong> ใช้บัญชี <b>@bcn.ac.th</b> จะได้รับบทบาทตามที่งานบุคลากรกำหนดไว้</p>
-            <p><UserRound size={14} /><strong>นักศึกษา</strong> ใช้อีเมลที่แจ้งไว้กับงานทะเบียน ระบบจะแสดงเฉพาะผลการเรียนรู้ของตนเอง</p>
+            {copy.steps.map((step) => <p key={step}><CheckCircle2 size={13} />{step}</p>)}
           </div>
-          <p className="privacy-note">ยังไม่มีสิทธิ์ใช้งานหลังเข้าสู่ระบบ ให้ติดต่องานทะเบียนเพื่อตรวจสอบว่าอีเมลตรงกับที่ลงทะเบียนไว้</p>
+          <p className="privacy-note">การเลือกประเภทผู้ใช้เป็นเพียงคำแนะนำขั้นตอน สิทธิ์ที่ได้รับมาจากรายชื่อที่ลงทะเบียนไว้ในระบบเสมอ</p>
         </div>
 
         <div className="login-divider"><span>สำหรับตรวจสอบหน้าจอ</span></div>
