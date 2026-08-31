@@ -22,27 +22,28 @@ describe("CSV import parsing", () => {
 });
 
 describe("CSV import validation", () => {
-  it("accepts a student row that carries a raw national id", () => {
+  it("accepts a student row identified by email, with no national id at all", () => {
     const errors = validateRows("students", [
-      { student_code: "68010001", full_name_th: "นางสาวตัวอย่าง ใจดี", national_id: "1103700000000", admit_year: "2568", current_year_level: "1", curriculum_version: "2565", section: "A", is_active: "true" },
+      { student_code: "68010001", full_name_th: "นางสาวตัวอย่าง ใจดี", email: "68010001@bcn.ac.th", admit_year: "2568", current_year_level: "1", curriculum_version: "2565", section: "A", is_active: "true" },
     ]);
     expect(errors).toEqual([]);
   });
 
-  it("rejects a bad identity hash and duplicate student codes", () => {
+  it("no longer collects a national id but still validates one that is supplied", () => {
+    expect(specs.students.columns).not.toContain("national_id");
+    expect(specs.students.required).not.toContain("national_id");
     const errors = validateRows("students", [
-      { student_code: "68010001", full_name_th: "ก", national_id_hash: "bad", admit_year: "2568", current_year_level: "1", curriculum_version: "2565" },
-      { student_code: "68010001", full_name_th: "ข", national_id_hash: "bad", admit_year: "2568", current_year_level: "1", curriculum_version: "2565" },
+      { student_code: "68010002", full_name_th: "ก", national_id: "123", admit_year: "2568", current_year_level: "1", curriculum_version: "2565" },
     ]);
-    expect(errors.some((error) => error.includes("64 ตัวอักษร"))).toBe(true);
-    expect(errors.some((error) => error.includes("ข้อมูลซ้ำ"))).toBe(true);
+    expect(errors.some((error) => error.includes("13 หลัก"))).toBe(true);
   });
 
-  it("requires either national_id or national_id_hash", () => {
+  it("rejects duplicate student codes in one file", () => {
     const errors = validateRows("students", [
-      { student_code: "68010002", full_name_th: "ค", admit_year: "2568", current_year_level: "1", curriculum_version: "2565" },
+      { student_code: "68010001", full_name_th: "ก", admit_year: "2568", current_year_level: "1", curriculum_version: "2565" },
+      { student_code: "68010001", full_name_th: "ข", admit_year: "2568", current_year_level: "1", curriculum_version: "2565" },
     ]);
-    expect(errors.some((error) => error.includes("national_id"))).toBe(true);
+    expect(errors.some((error) => error.includes("ข้อมูลซ้ำ"))).toBe(true);
   });
 
   it("accepts a valid staff role row", () => {

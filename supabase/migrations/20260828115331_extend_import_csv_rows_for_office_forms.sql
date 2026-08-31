@@ -1,5 +1,5 @@
 -- ขยาย import_csv_rows ให้รองรับฟอร์ม CSV ของงานทะเบียนและงานบุคลากร
---  * students          : รับ curriculum_version (เช่น 2565) แทน UUID, รับ national_id 13 หลักแล้วแฮชฝั่งฐานข้อมูล, รองรับ section
+--  * students          : รับ curriculum_version (เช่น 2565) แทน UUID, รองรับ email/section, national_id เป็นทางเลือกและแฮชฝั่งฐานข้อมูล
 --  * staff             : รองรับ position_th และ department
 --  * course_instructors: รองรับ instructor_role และ term และค้นรายวิชาด้วย course_code_alt ได้
 --  * class_advisors    : รองรับ advisor_kind
@@ -128,13 +128,13 @@ begin
         raise exception 'ไม่พบหลักสูตรสำหรับนักศึกษา % — ระบุ curriculum_version (เช่น 2565) หรือ curriculum_id', v_item->>'student_code';
       end if;
 
-      -- เลขบัตรประชาชน: กรอกเลข 13 หลักในคอลัมน์ national_id ได้ ระบบจะแปลงเป็น HMAC-SHA256 และไม่บันทึกค่าดิบ
+      -- เลขบัตรประชาชนเป็นทางเลือก (เข้าสู่ระบบด้วยอีเมลแล้ว) ถ้ากรอกมาจะแปลงเป็น HMAC-SHA256 และไม่บันทึกค่าดิบ
       v_hash := lower(nullif(v_item->>'national_id_hash',''));
       if v_hash is null and nullif(v_item->>'national_id','') is not null then
         v_hash := public.hash_national_id(v_item->>'national_id');
       end if;
-      if v_hash is null or v_hash !~ '^[a-f0-9]{64}$' then
-        raise exception 'นักศึกษา % ต้องมี national_id (13 หลัก) หรือ national_id_hash (64 ตัวอักษร)', v_item->>'student_code';
+      if v_hash is not null and v_hash !~ '^[a-f0-9]{64}$' then
+        raise exception 'นักศึกษา % มี national_id_hash ไม่ถูกต้อง (ต้องเป็น 64 ตัวอักษร)', v_item->>'student_code';
       end if;
 
       insert into public.students
@@ -142,10 +142,11 @@ begin
       values
         (v_item->>'student_code', v_item->>'full_name_th', v_hash, (v_item->>'admit_year')::integer, (v_item->>'current_year_level')::smallint, v_curriculum_id, nullif(v_item->>'section',''), lower(nullif(trim(v_item->>'email'),'')), coalesce((v_item->>'is_active')::boolean, true))
       on conflict (student_code) do update set
-        full_name_th = excluded.full_name_th, national_id_hash = excluded.national_id_hash,
+        full_name_th = excluded.full_name_th,
         admit_year = excluded.admit_year, current_year_level = excluded.current_year_level,
         curriculum_id = excluded.curriculum_id, section = coalesce(excluded.section, public.students.section),
         email = coalesce(excluded.email, public.students.email),
+        national_id_hash = coalesce(excluded.national_id_hash, public.students.national_id_hash),
         is_active = excluded.is_active, updated_at = now();
 
       -- ถ้านักศึกษามีบัญชีที่ล็อกอินไว้แล้ว ผูก student_access ให้ทันที

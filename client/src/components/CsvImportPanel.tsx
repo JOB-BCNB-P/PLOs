@@ -43,8 +43,8 @@ const BOM = "﻿";
 export const specs: Record<ImportKind, ImportSpec> = {
   students: {
     label: "รายชื่อนักศึกษา",
-    hint: "กรอกอีเมลไว้ล่วงหน้าได้ก่อนนักศึกษาเข้าสู่ระบบครั้งแรก · เลขบัตรประชาชน 13 หลักถูกแปลงเป็นค่าแฮชที่ฝั่งฐานข้อมูล ไม่บันทึกเลขดิบ",
-    columns: ["student_code", "full_name_th", "email", "national_id", "admit_year", "current_year_level", "curriculum_version", "section", "is_active"],
+    hint: "ระบุตัวตนด้วยอีเมลที่ใช้เข้าสู่ระบบ ไม่ต้องกรอกเลขบัตรประชาชน · กรอกอีเมลไว้ล่วงหน้าได้ก่อนนักศึกษาเข้าสู่ระบบครั้งแรก",
+    columns: ["student_code", "full_name_th", "email", "admit_year", "current_year_level", "curriculum_version", "section", "is_active"],
     required: ["student_code", "full_name_th", "admit_year", "current_year_level", "curriculum_version"],
     previewFields: ["student_code", "full_name_th", "current_year_level"],
     template: [
@@ -54,15 +54,15 @@ export const specs: Record<ImportKind, ImportSpec> = {
       "# full_name_th        = คำนำหน้า ชื่อ นามสกุล ภาษาไทย",
       "# email               = อีเมลที่นักศึกษาจะใช้เข้าสู่ระบบ กรอกล่วงหน้าได้ (เว้นว่างได้)",
       "#                       เมื่อเจ้าตัวล็อกอินครั้งแรก ระบบจะผูกให้เห็นผลของตนเองอัตโนมัติ",
-      "# national_id         = เลขประจำตัวประชาชน 13 หลัก (ไม่ต้องใส่ขีด) ระบบแปลงเป็นค่าแฮชก่อนบันทึก",
-      "#                       ถ้าหน่วยงานแฮชมาแล้ว ให้เปลี่ยนหัวคอลัมน์เป็น national_id_hash (64 ตัวอักษร)",
       "# admit_year          = ปีการศึกษาที่เข้า (พ.ศ.) เช่น 2568",
       "# current_year_level  = ชั้นปีปัจจุบัน 1-4",
       "# curriculum_version  = รุ่นหลักสูตร เช่น 2565",
       "# section             = กลุ่ม/หมู่เรียน (เว้นว่างได้)",
       "# is_active           = true = กำลังศึกษา, false = พ้นสภาพ/สำเร็จการศึกษา",
-      "student_code,full_name_th,email,national_id,admit_year,current_year_level,curriculum_version,section,is_active",
-      "# 68010001,นางสาวตัวอย่าง ใจดี,68010001@bcn.ac.th,1103700000000,2568,1,2565,A,true",
+      "# ไม่มีคอลัมน์เลขบัตรประชาชน เพราะระบบใช้อีเมลระบุตัวตนแล้ว",
+      "# (หากงานทะเบียนจำเป็นต้องกระทบยอดกับระบบอื่น เพิ่มคอลัมน์ national_id เองได้ ระบบจะแฮชก่อนบันทึกและไม่เก็บเลขดิบ)",
+      "student_code,full_name_th,email,admit_year,current_year_level,curriculum_version,section,is_active",
+      "# 68010001,นางสาวตัวอย่าง ใจดี,68010001@bcn.ac.th,2568,1,2565,A,true",
       "",
     ].join("\n"),
   },
@@ -254,11 +254,9 @@ export function validateRows(kind: ImportKind, rows: CsvRow[]) {
     if (key) seen.add(key);
 
     if (kind === "students") {
-      const hasHash = Boolean(row.national_id_hash?.trim());
-      const hasRaw = Boolean(row.national_id?.trim());
-      if (!hasHash && !hasRaw) errors.push(`แถว ${line}: ต้องมี national_id (13 หลัก) หรือ national_id_hash`);
-      if (hasHash && !/^[a-f0-9]{64}$/i.test(row.national_id_hash)) errors.push(`แถว ${line}: national_id_hash ต้องเป็นค่าแฮช 64 ตัวอักษร`);
-      if (!hasHash && hasRaw && !/^\d{13}$/.test(row.national_id.replace(/\D/g, ""))) errors.push(`แถว ${line}: national_id ต้องเป็นตัวเลข 13 หลัก`);
+      // เลขบัตรประชาชนไม่บังคับ แต่ถ้ากรอกมาต้องถูกต้อง
+      if (row.national_id_hash?.trim() && !/^[a-f0-9]{64}$/i.test(row.national_id_hash)) errors.push(`แถว ${line}: national_id_hash ต้องเป็นค่าแฮช 64 ตัวอักษร`);
+      if (row.national_id?.trim() && !/^\d{13}$/.test(row.national_id.replace(/\D/g, ""))) errors.push(`แถว ${line}: national_id ต้องเป็นตัวเลข 13 หลัก`);
       if (row.current_year_level && !/^[1-6]$/.test(row.current_year_level)) errors.push(`แถว ${line}: current_year_level ต้องอยู่ระหว่าง 1-6`);
       if (row.admit_year && !/^2[5-7]\d{2}$/.test(row.admit_year)) errors.push(`แถว ${line}: admit_year ต้องเป็นปี พ.ศ. 2500-2799`);
       if (row.curriculum_version && !/^2[5-7]\d{2}$/.test(row.curriculum_version)) errors.push(`แถว ${line}: curriculum_version ต้องเป็นปี พ.ศ. เช่น 2565`);
@@ -316,11 +314,8 @@ export default function CsvImportPanel() {
     setFileName(file.name);
     setRows(parsed);
     const header = readHeader(text);
-    const optional = new Set(kind === "students" ? ["national_id", "national_id_hash", "email", "section", "is_active"] : []);
+    const optional = new Set(kind === "students" ? ["email", "section", "is_active"] : []);
     const missingHeaders = spec.columns.filter((column) => !optional.has(column) && !header.includes(column));
-    if (kind === "students" && !header.includes("national_id") && !header.includes("national_id_hash")) {
-      missingHeaders.push("national_id หรือ national_id_hash");
-    }
     setErrors(
       parsed.length === 0
         ? ["ไม่พบข้อมูลแถวสำหรับนำเข้า (ตรวจว่าลบเครื่องหมาย # หน้าแถวข้อมูลแล้ว)"]
@@ -387,7 +382,7 @@ export default function CsvImportPanel() {
     </div>}
 
     <div className="csv-import-footer">
-      <p><CheckCircle2 size={15} />ไม่รับรหัสผ่านหรือ Client Secret และเลขบัตรประชาชนถูกแปลงเป็นค่าแฮชที่ฝั่งฐานข้อมูลก่อนบันทึกเสมอ</p>
+      <p><CheckCircle2 size={15} />ไม่รับรหัสผ่านหรือ Client Secret และไม่เก็บเลขบัตรประชาชน — ระบุตัวตนด้วยอีเมลและรหัสนักศึกษา</p>
       <Button type="button" onClick={() => void importRows()} disabled={!canImport}>
         {loading ? <><Loader2 className="animate-spin" size={15} />กำลังนำเข้า…</> : "ยืนยันและนำเข้า"}
       </Button>
