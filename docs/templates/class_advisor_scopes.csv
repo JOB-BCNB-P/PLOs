@@ -1,0 +1,12 @@
+﻿# ฟอร์มอาจารย์ประจำชั้น (มอบหมายเป็นชั้นปี)
+# advisor_email = อีเมล @bcn.ac.th ของอาจารย์ประจำชั้น
+# academic_year = ปีการศึกษา (พ.ศ.) เช่น 2568
+# year_level    = ชั้นปีที่รับผิดชอบ 1-4
+# section       = เว้นว่าง = ทุกกลุ่มในชั้นปีนั้น หรือระบุกลุ่มเมื่อแบ่งกันดูแล เช่น A
+# advisor_kind  = class_advisor (หลัก) | co_advisor (ร่วม) เว้นว่าง = class_advisor
+#
+# นำเข้าครั้งเดียวครบทุกชั้นปี ระบบจะปิดการมอบหมายของปีการศึกษาอื่นให้อัตโนมัติ
+# นักศึกษาที่เลื่อนชั้นหรือเข้าใหม่จะเข้าขอบเขตของที่ปรึกษาชั้นนั้นเองโดยไม่ต้องแก้ไฟล์
+advisor_email,academic_year,year_level,section,advisor_kind
+# somchai.k@bcn.ac.th,2568,1,,class_advisor
+# malee.s@bcn.ac.th,2568,2,,class_advisor

@@ -79,6 +79,22 @@ describe("CSV import validation", () => {
     expect(errors.some((error) => error.includes("2568/1"))).toBe(true);
   });
 
+  it("assigns a class advisor to a whole year level in one row", () => {
+    expect(validateRows("class_advisor_scopes", [
+      { advisor_email: "somchai.k@bcn.ac.th", academic_year: "2568", year_level: "1", section: "", advisor_kind: "class_advisor" },
+      { advisor_email: "malee.s@bcn.ac.th", academic_year: "2568", year_level: "2", section: "", advisor_kind: "class_advisor" },
+    ])).toEqual([]);
+  });
+
+  it("rejects a year level outside 1-6 and flags the same advisor twice on one year", () => {
+    const errors = validateRows("class_advisor_scopes", [
+      { advisor_email: "somchai.k@bcn.ac.th", academic_year: "2568", year_level: "9" },
+      { advisor_email: "somchai.k@bcn.ac.th", academic_year: "2568", year_level: "9" },
+    ]);
+    expect(errors.some((error) => error.includes("year_level"))).toBe(true);
+    expect(errors.some((error) => error.includes("ข้อมูลซ้ำ"))).toBe(true);
+  });
+
   it("accepts advisor and enrollment rows in the documented shape", () => {
     expect(validateRows("class_advisor_assignments", [
       { advisor_email: "somchai.k@bcn.ac.th", student_code: "68010001", academic_year: "2568", advisor_kind: "class_advisor" },

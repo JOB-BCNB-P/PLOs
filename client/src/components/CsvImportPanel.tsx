@@ -16,6 +16,7 @@ export type ImportKind =
   | "staff"
   | "user_roles"
   | "course_instructors"
+  | "class_advisor_scopes"
   | "class_advisor_assignments"
   | "course_enrollments"
   | "student_access"
@@ -122,9 +123,31 @@ export const specs: Record<ImportKind, ImportSpec> = {
       "",
     ].join("\n"),
   },
+  class_advisor_scopes: {
+    label: "อาจารย์ประจำชั้น (ทั้งชั้นปี)",
+    hint: "หนึ่งแถวคือ อาจารย์ 1 คน รับผิดชอบ 1 ชั้นปี ครอบคลุมนักศึกษาทั้งชั้นโดยไม่ต้องไล่รายคน · ปีการศึกษาที่นำเข้าล่าสุดคือปีที่มีผล",
+    columns: ["advisor_email", "academic_year", "year_level", "section", "advisor_kind"],
+    required: ["advisor_email", "academic_year", "year_level"],
+    previewFields: ["advisor_email", "year_level", "section"],
+    template: [
+      "# ฟอร์มอาจารย์ประจำชั้น (มอบหมายเป็นชั้นปี)",
+      "# advisor_email = อีเมล @bcn.ac.th ของอาจารย์ประจำชั้น",
+      "# academic_year = ปีการศึกษา (พ.ศ.) เช่น 2568",
+      "# year_level    = ชั้นปีที่รับผิดชอบ 1-4",
+      "# section       = เว้นว่าง = ทุกกลุ่มในชั้นปีนั้น หรือระบุกลุ่มเมื่อแบ่งกันดูแล เช่น A",
+      "# advisor_kind  = class_advisor (หลัก) | co_advisor (ร่วม) เว้นว่าง = class_advisor",
+      "#",
+      "# นำเข้าครั้งเดียวครบทุกชั้นปี ระบบจะปิดการมอบหมายของปีการศึกษาอื่นให้อัตโนมัติ",
+      "# นักศึกษาที่เลื่อนชั้นหรือเข้าใหม่จะเข้าขอบเขตของที่ปรึกษาชั้นนั้นเองโดยไม่ต้องแก้ไฟล์",
+      "advisor_email,academic_year,year_level,section,advisor_kind",
+      "# somchai.k@bcn.ac.th,2568,1,,class_advisor",
+      "# malee.s@bcn.ac.th,2568,2,,class_advisor",
+      "",
+    ].join("\n"),
+  },
   class_advisor_assignments: {
-    label: "อาจารย์ที่ปรึกษา",
-    hint: "หนึ่งแถวคือ อาจารย์ที่ปรึกษา 1 คน ต่อ นักศึกษา 1 คน ต่อ 1 ปีการศึกษา",
+    label: "อาจารย์ที่ปรึกษา (รายบุคคล)",
+    hint: "ใช้เฉพาะกรณียกเว้น เช่น นักศึกษาที่ต้องดูแลเป็นพิเศษนอกเหนือจากที่ปรึกษาประจำชั้น",
     columns: ["advisor_email", "student_code", "academic_year", "advisor_kind"],
     required: ["advisor_email", "student_code", "academic_year"],
     previewFields: ["advisor_email", "student_code", "academic_year"],
@@ -185,6 +208,7 @@ const KIND_ORDER: ImportKind[] = [
   "staff",
   "user_roles",
   "course_instructors",
+  "class_advisor_scopes",
   "class_advisor_assignments",
   "course_enrollments",
   "student_access",
@@ -235,6 +259,7 @@ function keyOf(kind: ImportKind, row: CsvRow) {
     case "students": return row.student_code;
     case "course_instructors": return `${row.course_code}|${row.instructor_email?.toLowerCase()}|${row.academic_year}`;
     case "class_advisor_assignments": return `${row.advisor_email?.toLowerCase()}|${row.student_code}|${row.academic_year}`;
+    case "class_advisor_scopes": return `${row.advisor_email?.toLowerCase()}|${row.academic_year}|${row.year_level}|${row.section || "*"}`;
     case "course_enrollments": return `${row.student_code}|${row.course_code}|${row.term}`;
     case "mapping_staging": return `${row.course_code}|${row.plo_code}|${row.sub_plo_code}|${row.mapping_level}`;
     default: return row.email?.toLowerCase();
@@ -275,6 +300,11 @@ export function validateRows(kind: ImportKind, rows: CsvRow[]) {
       if (row.instructor_role && !INSTRUCTOR_ROLES.has(row.instructor_role)) errors.push(`แถว ${line}: instructor_role ต้องเป็น course_owner, co_instructor หรือ clinical_preceptor`);
       if (row.academic_year && !/^2[5-7]\d{2}$/.test(row.academic_year)) errors.push(`แถว ${line}: academic_year ต้องเป็นปี พ.ศ.`);
       if (row.term && !TERM_PATTERN.test(row.term)) errors.push(`แถว ${line}: term ต้องอยู่ในรูปแบบ 2568/1`);
+    } else if (kind === "class_advisor_scopes") {
+      if (row.advisor_email && !EMAIL_PATTERN.test(row.advisor_email)) errors.push(`แถว ${line}: advisor_email ต้องเป็นบัญชี @bcn.ac.th`);
+      if (row.advisor_kind && !ADVISOR_KINDS.has(row.advisor_kind)) errors.push(`แถว ${line}: advisor_kind ต้องเป็น class_advisor หรือ co_advisor`);
+      if (row.academic_year && !/^2[5-7]\d{2}$/.test(row.academic_year)) errors.push(`แถว ${line}: academic_year ต้องเป็นปี พ.ศ.`);
+      if (row.year_level && !/^[1-6]$/.test(row.year_level)) errors.push(`แถว ${line}: year_level ต้องอยู่ระหว่าง 1-6`);
     } else if (kind === "class_advisor_assignments") {
       if (row.advisor_email && !EMAIL_PATTERN.test(row.advisor_email)) errors.push(`แถว ${line}: advisor_email ต้องเป็นบัญชี @bcn.ac.th`);
       if (row.advisor_kind && !ADVISOR_KINDS.has(row.advisor_kind)) errors.push(`แถว ${line}: advisor_kind ต้องเป็น class_advisor หรือ co_advisor`);
@@ -321,7 +351,11 @@ export default function CsvImportPanel() {
     setFileName(file.name);
     setRows(parsed);
     const header = readHeader(text);
-    const optional = new Set(kind === "students" ? ["email", "section", "is_active"] : []);
+    const optional = new Set(
+      kind === "students" ? ["email", "section", "is_active"]
+      : kind === "class_advisor_scopes" ? ["section", "advisor_kind"]
+      : [],
+    );
     const missingHeaders = spec.columns.filter((column) => !optional.has(column) && !header.includes(column));
     setErrors(
       parsed.length === 0

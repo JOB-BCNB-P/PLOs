@@ -2,7 +2,7 @@
 --  * students          : รับ curriculum_version (เช่น 2565) แทน UUID, รองรับ email/section, national_id เป็นทางเลือกและแฮชฝั่งฐานข้อมูล
 --  * staff             : รองรับ position_th, department และหลายบทบาทในช่อง role (คั่นด้วย |)
 --  * course_instructors: รองรับ instructor_role และ term และค้นรายวิชาด้วย course_code_alt ได้
---  * class_advisors    : รองรับ advisor_kind
+--  * class_advisors    : รองรับ advisor_kind และเพิ่ม class_advisor_scopes (มอบหมายทั้งชั้นปี)
 --  * courses/mapping   : ค้นหลักสูตรด้วย curriculum_version และค้นรายวิชาด้วยรหัสสำรองได้
 create or replace function public.import_csv_rows(p_kind text, p_rows jsonb, p_source_name text default null::text)
 returns integer
@@ -35,7 +35,7 @@ begin
   ) then
     raise exception 'เฉพาะผู้ดูแลระบบเท่านั้นที่นำเข้า CSV ได้';
   end if;
-  if p_kind not in ('curricula','plos','sub_plos','courses','curriculum_mapping','scores','mapping_staging','students','staff','user_roles','student_access','class_advisor_assignments','course_instructors','course_enrollments') then
+  if p_kind not in ('curricula','plos','sub_plos','courses','curriculum_mapping','scores','mapping_staging','students','staff','user_roles','student_access','class_advisor_assignments','course_instructors','course_enrollments','class_advisor_scopes') then
     raise exception 'ไม่รองรับประเภทข้อมูล CSV นี้';
   end if;
   if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then
@@ -208,6 +208,28 @@ begin
       values (v_course_id, v_student_id, v_item->>'term')
       on conflict (course_id, student_id, term) do nothing;
 
+    elsif p_kind = 'class_advisor_scopes' then
+      v_email := lower(trim(v_item->>'advisor_email'));
+      select p.id into v_profile_id from public.profiles p where lower(p.email) = v_email limit 1;
+      if v_profile_id is null then raise exception 'ยังไม่พบบัญชีอาจารย์ที่ปรึกษาใน Supabase Auth สำหรับ %', v_email; end if;
+      if coalesce(nullif(v_item->>'advisor_kind',''),'class_advisor') not in ('class_advisor','co_advisor') then
+        raise exception 'advisor_kind ต้องเป็น class_advisor หรือ co_advisor';
+      end if;
+      if (v_item->>'year_level')::smallint not between 1 and 6 then
+        raise exception 'year_level ต้องอยู่ระหว่าง 1-6';
+      end if;
+      -- ปีการศึกษาที่นำเข้าล่าสุดคือปีที่มีผล ปีอื่นถูกปิดอัตโนมัติ
+      update public.class_advisor_scopes set is_active = false
+       where is_active and academic_year <> (v_item->>'academic_year')::integer;
+      insert into public.class_advisor_scopes
+        (advisor_user_id, academic_year, year_level, section, advisor_kind, is_active, assigned_by)
+      values
+        (v_profile_id, (v_item->>'academic_year')::integer, (v_item->>'year_level')::smallint,
+         coalesce(nullif(btrim(v_item->>'section'),''), '*'),
+         coalesce(nullif(v_item->>'advisor_kind',''),'class_advisor'), true, auth.uid())
+      on conflict (advisor_user_id, academic_year, year_level, section) do update set
+        advisor_kind = excluded.advisor_kind, is_active = true, assigned_by = auth.uid(), assigned_at = now();
+
     elsif p_kind in ('staff','user_roles') then
       v_email := lower(trim(v_item->>'email'));
       if v_email !~ '^[^[:space:]@]+@bcn\.ac\.th$' then
@@ -264,6 +286,7 @@ begin
       when 'mapping_staging' then 'curriculum_mapping_staging' when 'students' then 'students'
       when 'student_access' then 'student_access' when 'class_advisor_assignments' then 'class_advisor_assignments'
       when 'course_instructors' then 'course_instructors' when 'course_enrollments' then 'course_enrollments'
+      when 'class_advisor_scopes' then 'class_advisor_scopes'
       else 'profiles,user_roles' end,
     p_source_name, jsonb_build_object('import_kind', p_kind, 'row_count', v_count), 'Controlled CSV import RPC');
   return v_count;
