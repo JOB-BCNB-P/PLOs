@@ -51,6 +51,21 @@ describe("CSV import validation", () => {
     expect(errors).toEqual([]);
   });
 
+  it("accepts several roles in one cell, separated by a pipe", () => {
+    const errors = validateRows("staff", [
+      { email: "malee.s@bcn.ac.th", display_name: "อาจารย์สองบทบาท", role: "executive|program_chair|lecturer", can_edit: "true", is_active: "true" },
+    ]);
+    expect(errors).toEqual([]);
+  });
+
+  it("names the offending role when one of several is unknown", () => {
+    const errors = validateRows("staff", [
+      { email: "malee.s@bcn.ac.th", display_name: "อาจารย์", role: "program_chair|dean" },
+    ]);
+    expect(errors.some((error) => error.includes('"dean"'))).toBe(true);
+    expect(errors.some((error) => error.includes("program_chair"))).toBe(false);
+  });
+
   it("rejects unsupported role and non-organization email", () => {
     const errors = validateRows("user_roles", [{ email: "outside@example.com", role: "owner" }]);
     expect(errors).toHaveLength(2);

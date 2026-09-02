@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "./components/ErrorBoundary";
-import AppShell, { viewsForRole, type AppView } from "./components/AppShell";
+import AppShell, { viewsForRoles, type AppView } from "./components/AppShell";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AdminView from "./pages/AdminView";
 import CohortView from "./pages/CohortView";
@@ -14,7 +14,7 @@ import StudentView from "./pages/StudentView";
 import { loadCurrentUser, type CurrentUser } from "./lib/session";
 import { supabase } from "./lib/supabase";
 
-const DEMO_USER: CurrentUser = { userId: "demo", email: "demo@bcn.ac.th", displayName: "โหมดตัวอย่าง", role: "admin", canEdit: false };
+const DEMO_USER: CurrentUser = { userId: "demo", email: "demo@bcn.ac.th", displayName: "โหมดตัวอย่าง", roles: ["admin"], role: "admin", canEdit: false };
 
 function App() {
   const previewParams = new URLSearchParams(window.location.search);
@@ -35,7 +35,7 @@ function App() {
       setCurrentUser(user);
       setAuthLoading(false);
       // นักศึกษาเปิดมาที่ผลของตนเองทันที และเห็นเฉพาะเมนูที่ได้รับสิทธิ์
-      if (user) setView((current) => (viewsForRole(user.role).includes(current) ? current : viewsForRole(user.role)[0]));
+      if (user) setView((current) => (viewsForRoles(user.roles).includes(current) ? current : viewsForRoles(user.roles)[0]));
     };
     void supabase.auth.getSession().then(({ data }) => void sync(Boolean(data.session)));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => void sync(Boolean(session)));
@@ -45,8 +45,9 @@ function App() {
   if (authLoading) return <ThemeProvider defaultTheme="dark"><div className="auth-loading">กำลังตรวจสอบสิทธิ์การเข้าใช้งาน…</div></ThemeProvider>;
   if (!currentUser) return <ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster /><Login onDemoEnter={() => { setCurrentUser(DEMO_USER); setAuthLoading(false); }} /></TooltipProvider></ThemeProvider>;
 
-  const isStudent = currentUser.role === "student";
-  const allowed = viewsForRole(currentUser.role);
+  // เป็น "นักศึกษาเท่านั้น" ก็ต่อเมื่อไม่มีบทบาทบุคลากรใดเลย
+  const isStudent = currentUser.roles.every((role) => role === "student");
+  const allowed = viewsForRoles(currentUser.roles);
   const activeView: AppView = allowed.includes(view) ? view : allowed[0];
   // นักศึกษาเห็นได้เฉพาะระเบียนของตนเอง ไม่ว่าจะกดมาจากที่ใด
   const studentIdForView = isStudent ? currentUser.studentId : selectedStudentId;
@@ -54,7 +55,7 @@ function App() {
   const exit = () => { if (!demoMode) void supabase.auth.signOut(); setCurrentUser(null); };
 
   return <ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster />
-    <AppShell view={activeView} onViewChange={setView} onExit={exit} role={currentUser.role} displayName={currentUser.displayName}>
+    <AppShell view={activeView} onViewChange={setView} onExit={exit} roles={currentUser.roles} displayName={currentUser.displayName}>
       {activeView === "overview" && <Dashboard onStudent={goStudent} demoMode={demoMode} />}
       {activeView === "student" && (isStudent && !currentUser.studentId
         ? <div className="history-empty">บัญชีนี้ยังไม่ได้ผูกกับระเบียนนักศึกษา — ติดต่องานทะเบียนเพื่อตรวจสอบว่าอีเมลตรงกับที่ลงทะเบียนไว้</div>

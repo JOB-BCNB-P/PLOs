@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ROLE_LABEL, type AppRole } from "@/lib/session";
+import { ROLE_LABEL, primaryRole, type AppRole } from "@/lib/session";
 
 export type AppView = "overview" | "student" | "year" | "cohort" | "curriculum" | "admin";
 
@@ -24,6 +24,14 @@ export function viewsForRole(role: AppRole): AppView[] {
   return ["overview", "student", "year", "cohort", "curriculum"];
 }
 
+/** ผู้ใช้หลายบทบาทเห็นสหภาพของทุกบทบาท เรียงตามลำดับเมนูมาตรฐาน */
+export function viewsForRoles(roles: AppRole[]): AppView[] {
+  const allowed = new Set(roles.flatMap(viewsForRole));
+  const ordered: AppView[] = ["overview", "student", "year", "cohort", "curriculum", "admin"];
+  const result = ordered.filter((view) => allowed.has(view));
+  return result.length ? result : viewsForRole("student");
+}
+
 function initialsOf(name: string) {
   const trimmed = name.trim();
   if (!trimmed) return "PA";
@@ -35,20 +43,22 @@ export default function AppShell({
   view,
   onViewChange,
   onExit,
-  role,
+  roles,
   displayName,
   children,
 }: {
   view: AppView;
   onViewChange: (view: AppView) => void;
   onExit: () => void;
-  role: AppRole;
+  roles: AppRole[];
   displayName: string;
   children: React.ReactNode;
 }) {
+  const role = primaryRole(roles);
+  const extraRoles = roles.filter((item) => item !== role).length;
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const allowed = viewsForRole(role);
+  const allowed = viewsForRoles(roles);
   const visibleNav = navItems.filter((item) => allowed.includes(item.id));
   const current = visibleNav.find((item) => item.id === view) ?? visibleNav[0];
 
@@ -70,8 +80,10 @@ export default function AppShell({
         <button className="mobile-brand" onClick={() => setMobileOpen((value) => !value)} aria-label="เปิดเมนู"><img src="/manus-storage/plo-p-loop-logo_81277cb8.png" alt="" /></button>
         <div className="product-crumb"><img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663912059158/OjLnCKytZGjLgGWM.png" alt="" /><div><strong>ระบบประเมิน PLO</strong><span>ผลลัพธ์การเรียนรู้ <b>/</b> {current?.label ?? ""}</span></div></div>
         <div className="topbar-actions">
-          {role !== "student" && <div className={`expanding-search ${searchOpen ? "open" : ""}`}><button onClick={() => setSearchOpen(true)} aria-label="ค้นหารหัสนักศึกษา"><Search size={18} /></button><Input aria-label="ค้นหารหัสนักศึกษา" placeholder="ค้นหารหัสนักศึกษา" onBlur={() => setSearchOpen(false)} /></div>}
-          <span className="role-pill" title={displayName}><span className="role-pulse" />{ROLE_LABEL[role]}</span>
+          {!(roles.length === 1 && role === "student") && <div className={`expanding-search ${searchOpen ? "open" : ""}`}><button onClick={() => setSearchOpen(true)} aria-label="ค้นหารหัสนักศึกษา"><Search size={18} /></button><Input aria-label="ค้นหารหัสนักศึกษา" placeholder="ค้นหารหัสนักศึกษา" onBlur={() => setSearchOpen(false)} /></div>}
+          <span className="role-pill" title={`${displayName} · ${roles.map((item) => ROLE_LABEL[item]).join(", ")}`}>
+            <span className="role-pulse" />{ROLE_LABEL[role]}{extraRoles > 0 && <b className="role-more">+{extraRoles}</b>}
+          </span>
           <Avatar className="top-avatar"><AvatarFallback>{initialsOf(displayName)}</AvatarFallback></Avatar>
           <Button variant="ghost" size="icon" className="exit-button" onClick={onExit} aria-label="ออกจากระบบ"><LogOut size={18} /></Button>
         </div>

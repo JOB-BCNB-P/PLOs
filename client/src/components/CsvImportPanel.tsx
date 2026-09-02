@@ -68,7 +68,7 @@ export const specs: Record<ImportKind, ImportSpec> = {
   },
   staff: {
     label: "ผู้สอน/บุคลากร และสิทธิ์",
-    hint: "กรอกอีเมลและบทบาทไว้ล่วงหน้าได้ ผู้ที่ยังไม่เคยเข้าสู่ระบบจะถูกเก็บเป็นรายชื่อรอ และได้รับสิทธิ์อัตโนมัติเมื่อล็อกอินด้วย Google ครั้งแรก",
+    hint: "หนึ่งคนมีหลายบทบาทได้ ใส่ในช่อง role คั่นด้วย | เช่น executive|program_chair|lecturer · กรอกล่วงหน้าได้ก่อนเจ้าตัวเข้าสู่ระบบครั้งแรก",
     columns: ["email", "display_name", "position_th", "department", "role", "can_edit", "is_active"],
     required: ["email", "display_name", "role"],
     previewFields: ["email", "display_name", "role"],
@@ -78,11 +78,14 @@ export const specs: Record<ImportKind, ImportSpec> = {
       "# display_name = คำนำหน้า ชื่อ นามสกุล",
       "# position_th  = ตำแหน่ง เช่น อาจารย์ / ผู้ช่วยศาสตราจารย์ / นักวิชาการศึกษา",
       "# department   = ภาควิชา/กลุ่มงาน",
-      "# role         = admin | executive | academic_affairs | program_chair | class_advisor | lecturer | student",
+      "# role         = admin, executive, academic_affairs, program_chair, class_advisor, lecturer, student",
+      "#                มีหลายบทบาทได้ ใส่ในช่องเดียวคั่นด้วย | เช่น executive|program_chair|lecturer",
+      "#                การนำเข้าจะแทนที่ชุดบทบาทเดิมทั้งหมดของคนนั้น",
       "# can_edit     = true เมื่อได้รับอนุมัติให้แก้ไขข้อมูล (ค่าเริ่มต้นควรเป็น false)",
       "# is_active    = true = ปฏิบัติงานอยู่",
       "email,display_name,position_th,department,role,can_edit,is_active",
       "# somchai.k@bcn.ac.th,นางสาวตัวอย่าง ทดสอบ,อาจารย์,ภาควิชาการพยาบาลผู้ใหญ่และผู้สูงอายุ,lecturer,false,true",
+      "# malee.s@bcn.ac.th,นางตัวอย่าง สองบทบาท,ผู้ช่วยศาสตราจารย์,ภาควิชาการพยาบาลเด็ก,program_chair|lecturer,true,true",
       "",
     ].join("\n"),
   },
@@ -94,7 +97,8 @@ export const specs: Record<ImportKind, ImportSpec> = {
     previewFields: ["email", "role", "can_edit"],
     template: [
       "# ฟอร์มปรับสิทธิ์ผู้ใช้",
-      "# role = admin | executive | academic_affairs | program_chair | class_advisor | lecturer | student",
+      "# role = admin, executive, academic_affairs, program_chair, class_advisor, lecturer, student",
+      "#        มีหลายบทบาทได้ คั่นด้วย | เช่น executive|program_chair|lecturer",
       "email,role,can_edit,is_active",
       "# somchai.k@bcn.ac.th,lecturer,false,true",
       "",
@@ -279,7 +283,10 @@ export function validateRows(kind: ImportKind, rows: CsvRow[]) {
       if (row.term && !TERM_PATTERN.test(row.term)) errors.push(`แถว ${line}: term ต้องอยู่ในรูปแบบ 2568/1`);
     } else {
       if (row.email && !EMAIL_PATTERN.test(row.email)) errors.push(`แถว ${line}: email ต้องเป็นบัญชี @bcn.ac.th`);
-      if (row.role && !allowedRoles.has(row.role)) errors.push(`แถว ${line}: role ไม่อยู่ในรายการที่ระบบรองรับ`);
+      // role รับได้หลายบทบาทในช่องเดียว คั่นด้วย |
+      const roleList = (row.role ?? "").split("|").map((item) => item.trim()).filter(Boolean);
+      if (row.role?.trim() && roleList.length === 0) errors.push(`แถว ${line}: ต้องระบุ role อย่างน้อยหนึ่งบทบาท`);
+      roleList.filter((item) => !allowedRoles.has(item)).forEach((item) => errors.push(`แถว ${line}: role "${item}" ไม่อยู่ในรายการที่ระบบรองรับ`));
     }
   });
   return errors;

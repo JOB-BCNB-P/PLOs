@@ -51,13 +51,37 @@
 
 | คอลัมน์ | ค่าที่ยอมรับ |
 |---|---|
-| `role` | `admin`, `executive`, `academic_affairs`, `program_chair`, `class_advisor`, `lecturer`, `student` |
+| `role` | `admin`, `executive`, `academic_affairs`, `program_chair`, `class_advisor`, `lecturer`, `student` — **ใส่หลายบทบาทได้ คั่นด้วย `|`** เช่น `executive\|program_chair\|lecturer` |
 | `instructor_role` | `course_owner` (ผู้รับผิดชอบรายวิชา), `co_instructor` (ผู้สอนร่วม), `clinical_preceptor` (อาจารย์นิเทศ/พี่เลี้ยงแหล่งฝึก) |
 | `advisor_kind` | `class_advisor` (ที่ปรึกษาหลัก), `co_advisor` (ที่ปรึกษาร่วม) |
 | `term` | `ปีพ.ศ./ภาค` เช่น `2568/1`, `2568/2`, `2568/3` (3 = ภาคฤดูร้อน) |
 | `course_code` | รหัสตามเล่มหลักสูตร เช่น `0101300209`, `GE 101` หรือรหัสในไฟล์ Curriculum Mapping เช่น `0118300209` |
 | `curriculum_version` | รุ่นหลักสูตรเป็นปี พ.ศ. เช่น `2565` |
 | `can_edit`, `is_active` | `true` / `false` |
+
+## หนึ่งคนหลายบทบาท
+
+ผู้บริหารที่เป็นอาจารย์และเป็นประธานสาขาด้วย ใส่ทุกบทบาทในช่อง `role` ช่องเดียว คั่นด้วย `|`
+
+```
+email,display_name,position_th,department,role,can_edit,is_active
+malee.s@bcn.ac.th,ผศ.ดร.ตัวอย่าง สามบทบาท,ผู้ช่วยศาสตราจารย์,ภาควิชาการพยาบาลเด็ก,executive|program_chair|lecturer,true,true
+```
+
+สิทธิ์ที่ได้คือ **สหภาพ** ของทุกบทบาท และการนำเข้าจะ **แทนที่ชุดบทบาทเดิมทั้งหมด** ของคนนั้น
+(ถ้าต้องการถอดบทบาทใดออก ให้ลบออกจากช่องแล้วนำเข้าใหม่)
+
+### แยกให้ชัด: "บทบาท" กับ "การมอบหมาย"
+
+| สิ่งที่ต้องการ | ใส่ที่ไหน |
+|---|---|
+| ระดับสิทธิ์/เมนูที่เห็น | ช่อง `role` ในฟอร์มนี้ |
+| เป็นอาจารย์ที่ปรึกษา **ของนักศึกษาคนไหน** | `class_advisor_assignments.csv` |
+| เป็นผู้สอน **วิชาไหน ปีไหน** | `course_instructors.csv` |
+
+`class_advisor` และ `lecturer` ในช่อง `role` บอกแค่ว่า "เข้าถึงหน้าจอระดับนี้ได้"
+ส่วนคำถามว่าเห็นข้อมูลของ *ใคร* มาจากตารางมอบหมาย ไม่ใช่จากบทบาท — ดังนั้นอาจารย์ที่ปรึกษาชั้นปี 2
+จะเห็นเฉพาะนักศึกษาที่ระบุไว้ใน `class_advisor_assignments.csv` เท่านั้น แม้จะมี role เดียวกับที่ปรึกษาคนอื่น
 
 ## สิทธิ์และร่องรอย
 

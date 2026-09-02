@@ -1,6 +1,6 @@
 -- ขยาย import_csv_rows ให้รองรับฟอร์ม CSV ของงานทะเบียนและงานบุคลากร
 --  * students          : รับ curriculum_version (เช่น 2565) แทน UUID, รองรับ email/section, national_id เป็นทางเลือกและแฮชฝั่งฐานข้อมูล
---  * staff             : รองรับ position_th และ department
+--  * staff             : รองรับ position_th, department และหลายบทบาทในช่อง role (คั่นด้วย |)
 --  * course_instructors: รองรับ instructor_role และ term และค้นรายวิชาด้วย course_code_alt ได้
 --  * class_advisors    : รองรับ advisor_kind
 --  * courses/mapping   : ค้นหลักสูตรด้วย curriculum_version และค้นรายวิชาด้วยรหัสสำรองได้
@@ -22,6 +22,7 @@ declare
   v_assessment_method_id uuid;
   v_count integer := 0;
   v_role public.app_role;
+  v_roles public.app_role[];
   v_hash text;
   v_code text;
 begin
@@ -213,24 +214,32 @@ begin
         raise exception 'ผู้ใช้ต้องเป็นบัญชีอีเมล @bcn.ac.th';
       end if;
       select p.id into v_profile_id from public.profiles p where lower(p.email) = v_email limit 1;
-      if v_item->>'role' not in ('admin','executive','academic_affairs','program_chair','class_advisor','lecturer','student') then
-        raise exception 'role ไม่อยู่ในรายการที่ระบบรองรับ';
+      -- role ระบุได้หลายบทบาทในช่องเดียว คั่นด้วย | เช่น executive|program_chair|lecturer
+      if exists (
+        select 1 from unnest(string_to_array(coalesce(v_item->>'role',''), '|')) t
+        where btrim(t) <> '' and btrim(t) not in ('admin','executive','academic_affairs','program_chair','class_advisor','lecturer','student')
+      ) then
+        raise exception 'role ไม่อยู่ในรายการที่ระบบรองรับ (%)', v_item->>'role';
+      end if;
+      select array_agg(distinct btrim(t)::public.app_role) into v_roles
+        from unnest(string_to_array(coalesce(v_item->>'role',''), '|')) t where btrim(t) <> '';
+      if v_roles is null then
+        raise exception 'ต้องระบุ role อย่างน้อยหนึ่งบทบาทสำหรับ %', v_email;
       end if;
       if v_profile_id is null then
         -- ยังไม่เคยเข้าสู่ระบบ: เก็บเป็นรายชื่อล่วงหน้า ระบบจะให้สิทธิ์อัตโนมัติเมื่อล็อกอินครั้งแรก
-        insert into public.pending_staff (email, display_name, position_th, department, role, can_edit, invited_by)
+        insert into public.pending_staff (email, display_name, position_th, department, roles, can_edit, invited_by)
         values (v_email, nullif(trim(v_item->>'display_name'),''), nullif(trim(v_item->>'position_th'),''), nullif(trim(v_item->>'department'),''),
-                (v_item->>'role')::public.app_role, coalesce((v_item->>'can_edit')::boolean, false), auth.uid())
+                v_roles, coalesce((v_item->>'can_edit')::boolean, false), auth.uid())
         on conflict (email) do update set
           display_name = coalesce(excluded.display_name, public.pending_staff.display_name),
           position_th  = coalesce(excluded.position_th, public.pending_staff.position_th),
           department   = coalesce(excluded.department, public.pending_staff.department),
-          role = excluded.role, can_edit = excluded.can_edit,
+          roles = excluded.roles, can_edit = excluded.can_edit,
           invited_by = auth.uid(), invited_at = now(), applied_at = null, applied_user_id = null;
         v_count := v_count + 1;
         continue;
       end if;
-      v_role := (v_item->>'role')::public.app_role;
       update public.profiles
       set display_name = coalesce(nullif(trim(v_item->>'display_name'),''), display_name),
           position_th  = coalesce(nullif(trim(v_item->>'position_th'),''), position_th),
@@ -239,9 +248,10 @@ begin
           is_active    = coalesce((v_item->>'is_active')::boolean, is_active),
           updated_at   = now()
       where id = v_profile_id;
+      delete from public.user_roles where user_id = v_profile_id and role <> all (v_roles);
       insert into public.user_roles (user_id, role, assigned_by)
-      values (v_profile_id, v_role, auth.uid())
-      on conflict (user_id) do update set role = excluded.role, assigned_by = auth.uid(), assigned_at = now();
+      select v_profile_id, r, auth.uid() from unnest(v_roles) r
+      on conflict (user_id, role) do update set assigned_by = auth.uid(), assigned_at = now();
     end if;
     v_count := v_count + 1;
   end loop;

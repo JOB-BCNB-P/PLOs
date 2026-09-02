@@ -1,4 +1,5 @@
 ﻿# ฟอร์มปรับสิทธิ์ผู้ใช้
-# role = admin | executive | academic_affairs | program_chair | class_advisor | lecturer | student
+# role = admin, executive, academic_affairs, program_chair, class_advisor, lecturer, student
+#        มีหลายบทบาทได้ คั่นด้วย | เช่น executive|program_chair|lecturer
 email,role,can_edit,is_active
 # somchai.k@bcn.ac.th,lecturer,false,true

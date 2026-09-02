@@ -3,8 +3,11 @@
 # display_name = คำนำหน้า ชื่อ นามสกุล
 # position_th  = ตำแหน่ง เช่น อาจารย์ / ผู้ช่วยศาสตราจารย์ / นักวิชาการศึกษา
 # department   = ภาควิชา/กลุ่มงาน
-# role         = admin | executive | academic_affairs | program_chair | class_advisor | lecturer | student
+# role         = admin, executive, academic_affairs, program_chair, class_advisor, lecturer, student
+#                มีหลายบทบาทได้ ใส่ในช่องเดียวคั่นด้วย | เช่น executive|program_chair|lecturer
+#                การนำเข้าจะแทนที่ชุดบทบาทเดิมทั้งหมดของคนนั้น
 # can_edit     = true เมื่อได้รับอนุมัติให้แก้ไขข้อมูล (ค่าเริ่มต้นควรเป็น false)
 # is_active    = true = ปฏิบัติงานอยู่
 email,display_name,position_th,department,role,can_edit,is_active
 # somchai.k@bcn.ac.th,นางสาวตัวอย่าง ทดสอบ,อาจารย์,ภาควิชาการพยาบาลผู้ใหญ่และผู้สูงอายุ,lecturer,false,true
+# malee.s@bcn.ac.th,นางตัวอย่าง สองบทบาท,ผู้ช่วยศาสตราจารย์,ภาควิชาการพยาบาลเด็ก,program_chair|lecturer,true,true
